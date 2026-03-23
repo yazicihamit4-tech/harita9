@@ -850,7 +850,13 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                             .document(yeniSinyal.id)
                                             .set(yeniSinyal).await()
 
-                                        // Admin topic'ine yeni sinyal bildirimi gönderilebilir (Cloud function veya Retrofit vasıtasıyla)
+                                        // Admin topic'ine yeni sinyal bildirimi gönder
+                                        FcmSender.sendNotificationToTopic(
+                                            context = context,
+                                            topic = "admin_notifications",
+                                            title = "🚨 Yeni Sinyal Bildirimi!",
+                                            body = "${isimSoyisim} tarafından yeni bir ihbar yapıldı. Lütfen inceleyin."
+                                        )
 
                                         showSuccessDialog = true
                                         flashLightEffect(context, coroutineScope)
@@ -1010,6 +1016,17 @@ fun AdminEkrani() {
                     try {
                         FirebaseFirestore.getInstance().collection("sinyaller").document(id)
                             .update(mapOf("durum" to durum, "adminCevap" to cevap)).await()
+
+                        // Kullanıcıya Bildirim Gönder (Eğer FCM Token'ı varsa)
+                        if (!sinyal.fcmToken.isNullOrEmpty()) {
+                            FcmSender.sendNotificationToToken(
+                                context = context,
+                                targetToken = sinyal.fcmToken,
+                                title = "Sinyal Durumu Güncellendi!",
+                                body = "Bildiriminiz '${durum}' olarak güncellendi. Yeni mesajınız var."
+                            )
+                        }
+
                         Toast.makeText(context, "Güncellendi", Toast.LENGTH_SHORT).show()
                         fetchSinyaller() // Listeyi yenile
                     } catch (e: Exception) {
